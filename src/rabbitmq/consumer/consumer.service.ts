@@ -1,47 +1,73 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  OnModuleInit,
+} from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { ConfigService } from '@nestjs/config';
-import { Server } from 'socket.io';
+import { StatusService } from 'src/notificacao/service/status.service';
 
 @Injectable()
-export class ConsumerService {
-  private io: Server;
-  private readonly queue: string;
+export class ConsumerService implements OnModuleInit {
+  private channelConsume: amqp.Channel;
+  private channelPublish: amqp.Channel;
+  private readonly queueConsume: string;
+  private readonly queuePublish: string;
 
-  constructor(private configService: ConfigService) {
-    this.queue = this.configService.get('RABBITMQ_QUEUE')  || 'notifications';
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly statusService: StatusService,
+  ) {
+    const nome = this.configService.get<string>('RABBITMQ_MEU_NOME') || 'desconhecido';
+
+    this.queueConsume = `fila.notificacao.entrada.${nome}`;
+    this.queuePublish = `fila.notificacao.status.${nome}`;
   }
 
-  setSocketServer(io: Server) {
-    this.io = io;
-  }
-
-  async consume() {
-    const connectionVRSoftware = await amqp.connect({
+  async onModuleInit() {
+    const conn = await amqp.connect({
       protocol: 'amqp',
       hostname: this.configService.get('RABBITMQ_HOST'),
       port: Number(this.configService.get('RABBITMQ_PORT')),
       username: this.configService.get('RABBITMQ_USER'),
-      password: this.configService.get('RABBITMQ_PASS'),
+      password: this.configService.get('RABBITMQ_PASSWORD'),
     });
 
-    const channel = await connectionVRSoftware.createChannel();
-    await channel.assertQueue(this.queue, { durable: true });
+    this.channelConsume = await conn.createChannel();
+    this.channelPublish = await conn.createChannel();
 
-    channel.consume(this.queue, async (message) => {
-      if (message !== null) {
-        const data = JSON.parse(message.content.toString());
+    await this.channelConsume.assertQueue(this.queueConsume, { durable: true });
+    await this.channelPublish.assertQueue(this.queuePublish, { durable: true });
 
-        await new Promise(res => setTimeout(res, 3000));
+    this.channelConsume.consume(this.queueConsume, async (mensagem) => {
+      if (mensagem) {
+        try {
+          const content = JSON.parse(mensagem.content.toString());
+          console.log('Mensagem recebida:', content);
 
-        this.io.emit('feedback-notification-result', {
-          id: data.id,
-          status: 'sucesso',
-          mensagem: data.mensagem,
-        });
+          await new Promise((res) =>
+            setTimeout(res, 1000 + Math.random() * 1000),
+          );
+          const rand = Math.floor(Math.random() * 10) + 1;
+          const status =
+            rand <= 2 ? 'FALHA_PROCESSAMENTO' : 'PROCESSADO_SUCESSO';
+          this.statusService.setStatus(content.mensagemId, status);
+          const resultadoMensagem = {
+            mensagemId: content.mensagemId,
+            status,
+          };
 
-        channel.ack(message);
+          this.channelPublish.sendToQueue(
+            this.queuePublish,
+            Buffer.from(JSON.stringify(resultadoMensagem)),
+          );
+          console.log('Status publicado:', resultadoMensagem);
+
+          this.channelConsume.ack(mensagem);
+        } catch (err) {
+          throw new InternalServerErrorException('Erro ao processar mensagem:', err);
+        }
       }
-    });
+    })
   }
 }

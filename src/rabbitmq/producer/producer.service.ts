@@ -1,4 +1,3 @@
-// src/rabbitmq/producer.service.ts
 import { Injectable } from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { ConfigService } from '@nestjs/config';
