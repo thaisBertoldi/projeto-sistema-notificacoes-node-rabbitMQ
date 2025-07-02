@@ -1,14 +1,16 @@
+// src/rabbitmq/producer.service.ts
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProducerService {
   private channel: amqp.Channel;
-  private readonly queue: string;
+  private readonly queueName: string;
 
   constructor(private configService: ConfigService) {
-    this.queue = this.configService.get('RABBITMQ_QUEUE')  || 'notifications';
+    const nome = this.configService.get<string>('RABBITMQ_MEU_NOME') || 'desconhecido';
+    this.queueName = `fila.notificacao.entrada.${nome}`;
   }
 
   async connect() {
@@ -17,14 +19,14 @@ export class ProducerService {
       hostname: this.configService.get('RABBITMQ_HOST'),
       port: Number(this.configService.get('RABBITMQ_PORT')),
       username: this.configService.get('RABBITMQ_USER'),
-      password: this.configService.get('RABBITMQ_PASSWORD'),
+      password: this.configService.get('RABBITMQ_PASS'),
     });
 
     this.channel = await connectionVRSoftware.createChannel();
-    await this.channel.assertQueue(this.queue, { durable: true });
+    await this.channel.assertQueue(this.queueName, { durable: true });
   }
 
-  async sendNotification(data: any) {
-    this.channel.sendToQueue(this.queue, Buffer.from(JSON.stringify(data)));
+  async sendNotification(payload: { mensagemId: string; conteudoMensagem: string }) {
+    this.channel.sendToQueue(this.queueName, Buffer.from(JSON.stringify(payload)));
   }
 }

@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { NotificacaoService } from './notificacao.service';
-import { NotificacaoController } from './notificacao.controller';
+import { NotificacaoController } from './controller/notificacao.controller';
+import { ProducerService } from 'src/rabbitmq/producer/producer.service';
 
 @Module({
   controllers: [NotificacaoController],
-  providers: [NotificacaoService],
+  providers: [ProducerService],
 })
 export class NotificacaoModule {}
