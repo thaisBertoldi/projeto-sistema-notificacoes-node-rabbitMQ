@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { ConfigService } from '@nestjs/config';
-import { StatusService } from 'src/notificacao/service/status.service';
+import { StatusService } from '../../notificacao/service/status.service';
 
 @Injectable()
 export class ProducerService {
