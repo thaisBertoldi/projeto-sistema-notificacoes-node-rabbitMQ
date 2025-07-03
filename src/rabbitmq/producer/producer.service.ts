@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { ConfigService } from '@nestjs/config';
+import { StatusService } from 'src/notificacao/service/status.service';
 
 @Injectable()
 export class ProducerService {
   private channel: amqp.Channel;
   private readonly queueName: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private statusService: StatusService
+  ) {
     const nome = this.configService.get<string>('RABBITMQ_MEU_NOME') || 'desconhecido';
     this.queueName = `fila.notificacao.entrada.${nome}`;
   }
@@ -18,7 +22,7 @@ export class ProducerService {
       hostname: this.configService.get('RABBITMQ_HOST'),
       port: Number(this.configService.get('RABBITMQ_PORT')),
       username: this.configService.get('RABBITMQ_USER'),
-      password: this.configService.get('RABBITMQ_PASS'),
+      password: this.configService.get('RABBITMQ_PASSWORD'),
     });
 
     this.channel = await connectionVRSoftware.createChannel();
@@ -26,6 +30,7 @@ export class ProducerService {
   }
 
   async sendNotification(payload: { mensagemId: string; conteudoMensagem: string }) {
-    this.channel.sendToQueue(this.queueName, Buffer.from(JSON.stringify(payload)));
+    await this.channel.sendToQueue(this.queueName, Buffer.from(JSON.stringify(payload)));
+    this.statusService.salvarStatus(payload.mensagemId, 'ENVIADO');
   }
 }

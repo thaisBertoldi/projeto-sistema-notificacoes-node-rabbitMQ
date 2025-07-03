@@ -4,7 +4,11 @@ import { Injectable } from '@nestjs/common';
 export class StatusService {
   private statusMap = new Map<string, string>();
 
-  setStatus(mensagemId: string, status: string) {
+  salvarStatus(mensagemId: string, status: string) {
+    this.statusMap.set(mensagemId, status);
+  }
+
+  atualizarStatus(mensagemId: string, status: string) {
     this.statusMap.set(mensagemId, status);
   }
 
@@ -12,7 +16,10 @@ export class StatusService {
     return this.statusMap.get(mensagemId);
   }
 
-  getAllStatus(): Map<string, string> {
-    return this.statusMap;
+  listarTodos() {
+    return Array.from(this.statusMap.entries()).map(([id, status]) => ({
+      mensagemId: id,
+      status,
+    }));
   }
 }

@@ -51,7 +51,7 @@ export class ConsumerService implements OnModuleInit {
           const rand = Math.floor(Math.random() * 10) + 1;
           const status =
             rand <= 2 ? 'FALHA_PROCESSAMENTO' : 'PROCESSADO_SUCESSO';
-          this.statusService.setStatus(content.mensagemId, status);
+          this.statusService.atualizarStatus(content.mensagemId, status);
           const resultadoMensagem = {
             mensagemId: content.mensagemId,
             status,

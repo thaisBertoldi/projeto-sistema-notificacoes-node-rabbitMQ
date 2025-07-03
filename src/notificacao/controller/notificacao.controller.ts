@@ -38,6 +38,7 @@ export class NotificacaoController {
         mensagem: `Id: ${notificacao.mensagemId}, requisição recebida e será processada assincronamente.`,
       };
     } catch (error) {
+      console.log(error);
       throw new BadRequestException('Não foi possível enviar a notificação.');
     }
   }
